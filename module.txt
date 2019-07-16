@@ -1,0 +1,11 @@
+{
+    "id" : "AdvancedRendering",
+    "version" : "0.1.0-SNAPSHOT",
+    "author" : "Respective rendering authors",
+    "displayName" : "AdvancedRendering",
+    "description" : "This module contains all advanced rendering nodes",
+    "dependencies" : [
+    {"id": "BasicRendering", "minVersion": "0.5.0"}
+    ],
+    "serverSideOnly" : false
+}
