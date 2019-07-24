@@ -28,6 +28,8 @@ import org.terasology.rendering.opengl.fbms.DisplayResolutionDependentFbo;
 import org.terasology.rendering.opengl.fbms.ImmutableFbo;
 import org.terasology.rendering.opengl.fbms.ShadowMapResolutionDependentFbo;
 
+import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
+import static org.terasology.rendering.dag.nodes.DownSamplerForExposureNode.*;
 import static org.terasology.rendering.opengl.ScalingFactors.*;
 
 @RegisterSystem
@@ -56,37 +58,17 @@ public class AdvancedRenderingModule extends ModuleRendering {
 
         displayResolutionDependentFbo = context.get(DisplayResolutionDependentFbo.class);
 
-        addAmbientOcclusion();
-
         addHaze();
 
-        addBloomNodes();
+        addShadowMap();
+
+        addAmbientOcclusion();
 
         addLightShafts();
 
+        addBloomNodes();
+
         // worldRenderer.requestTaskListRefresh();
-    }
-
-    private void addAmbientOcclusion() {
-        NewNode opaqueObjectsNode = renderGraph.findNode("BasicRendering:opaqueObjectsNode");
-        NewNode opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
-        NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
-        NewNode applyDeferredLightingNode = renderGraph.findAka("applyDeferredLighting");
-
-        NewNode ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", context);
-        renderGraph.connectBufferPair(applyDeferredLightingNode, 1, ambientOcclusionNode, 1);
-        renderGraph.connectRunOrder(opaqueObjectsNode, 3, ambientOcclusionNode, 1);
-        renderGraph.connectRunOrder(opaqueBlocksNode, 3, ambientOcclusionNode, 2);
-        renderGraph.connectRunOrder(alphaRejectBlocksNode, 4, ambientOcclusionNode, 3);
-        renderGraph.addNode(ambientOcclusionNode);
-
-        NewNode blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", context);
-        renderGraph.connectBufferPair(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
-        renderGraph.connectFbo(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
-        renderGraph.addNode(blurredAmbientOcclusionNode);
-
-        NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
-        renderGraph.connectFbo(blurredAmbientOcclusionNode, 1, prePostCompositeNode, 1);
     }
 
     private void addHaze() {
@@ -126,6 +108,42 @@ public class AdvancedRenderingModule extends ModuleRendering {
 
         NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
         renderGraph.connectFbo(finalHazeNode, 1, prePostCompositeNode, 3);
+    }
+
+    private void addShadowMap() {
+        FboConfig shadowMapConfig = new FboConfig(ShadowMapNode.SHADOW_MAP_FBO_URI, FBO.Type.NO_COLOR).useDepthBuffer();
+        BufferClearingNode shadowMapClearingNode = new BufferClearingNode("shadowMapClearingNode", context,
+                shadowMapConfig, shadowMapResolutionDependentFbo, GL_DEPTH_BUFFER_BIT);
+        renderGraph.addNode(shadowMapClearingNode);
+
+        shadowMapNode = new ShadowMapNode("shadowMapNode", context);
+        renderGraph.connectFbo(shadowMapClearingNode, 1, shadowMapNode, 1);
+        renderGraph.addNode(shadowMapNode);
+
+        NewNode deferredMainLightNode = renderGraph.findNode("BasicRendering:deferredMainLightNode");
+        renderGraph.connectFbo(shadowMapNode, 1, deferredMainLightNode, 1);
+    }
+
+    private void addAmbientOcclusion() {
+        NewNode opaqueObjectsNode = renderGraph.findNode("BasicRendering:opaqueObjectsNode");
+        NewNode opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
+        NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
+        NewNode applyDeferredLightingNode = renderGraph.findAka("applyDeferredLighting");
+
+        NewNode ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", context);
+        renderGraph.connectBufferPair(applyDeferredLightingNode, 1, ambientOcclusionNode, 1);
+        renderGraph.connectRunOrder(opaqueObjectsNode, 3, ambientOcclusionNode, 1);
+        renderGraph.connectRunOrder(opaqueBlocksNode, 3, ambientOcclusionNode, 2);
+        renderGraph.connectRunOrder(alphaRejectBlocksNode, 4, ambientOcclusionNode, 3);
+        renderGraph.addNode(ambientOcclusionNode);
+
+        NewNode blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", context);
+        renderGraph.connectBufferPair(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
+        renderGraph.connectFbo(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
+        renderGraph.addNode(blurredAmbientOcclusionNode);
+
+        NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
+        renderGraph.connectFbo(blurredAmbientOcclusionNode, 1, prePostCompositeNode, 1);
     }
 
     private void addLightShafts() {
