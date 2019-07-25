@@ -78,7 +78,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         FboConfig intermediateHazeConfig = new FboConfig(HazeNode.INTERMEDIATE_HAZE_FBO_URI, ONE_16TH_SCALE, FBO.Type.DEFAULT);
         FBO intermediateHazeFbo = displayResolutionDependentFbo.request(intermediateHazeConfig);
 
-        HazeNode intermediateHazeNode = new HazeNode("intermediateHazeNode", context,
+        HazeNode intermediateHazeNode = new HazeNode("intermediateHazeNode", providingModule, context,
                 intermediateHazeFbo);
         // TODO I introduce new BufferPairConnection but I have to fetch it from the old system. This must be removed when every node uses new system
         // make this implicit
@@ -90,7 +90,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         FboConfig finalHazeConfig = new FboConfig(HazeNode.FINAL_HAZE_FBO_URI, ONE_32TH_SCALE, FBO.Type.DEFAULT);
         FBO finalHazeFbo = displayResolutionDependentFbo.request(finalHazeConfig);
 
-        HazeNode finalHazeNode = new HazeNode("finalHazeNode", context, finalHazeFbo);
+        HazeNode finalHazeNode = new HazeNode("finalHazeNode", providingModule, context, finalHazeFbo);
         renderGraph.connectBufferPair(lastUpdatedGBufferClearingNode, 1, finalHazeNode, 1);
         renderGraph.connectFbo(intermediateHazeNode, 1, finalHazeNode, 1);
         // Hack because HazeNode extends Blur which is a reusable node and we can't tailor its code to this need
@@ -112,11 +112,11 @@ public class AdvancedRenderingModule extends ModuleRendering {
 
     private void addShadowMap() {
         FboConfig shadowMapConfig = new FboConfig(ShadowMapNode.SHADOW_MAP_FBO_URI, FBO.Type.NO_COLOR).useDepthBuffer();
-        BufferClearingNode shadowMapClearingNode = new BufferClearingNode("shadowMapClearingNode", context,
+        BufferClearingNode shadowMapClearingNode = new BufferClearingNode("shadowMapClearingNode", providingModule, context,
                 shadowMapConfig, shadowMapResolutionDependentFbo, GL_DEPTH_BUFFER_BIT);
         renderGraph.addNode(shadowMapClearingNode);
 
-        shadowMapNode = new ShadowMapNode("shadowMapNode", context);
+        shadowMapNode = new ShadowMapNode("shadowMapNode", providingModule, context);
         renderGraph.connectFbo(shadowMapClearingNode, 1, shadowMapNode, 1);
         renderGraph.addNode(shadowMapNode);
 
@@ -130,14 +130,14 @@ public class AdvancedRenderingModule extends ModuleRendering {
         NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
         NewNode applyDeferredLightingNode = renderGraph.findAka("applyDeferredLighting");
 
-        NewNode ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", context);
+        NewNode ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", providingModule, context);
         renderGraph.connectBufferPair(applyDeferredLightingNode, 1, ambientOcclusionNode, 1);
         renderGraph.connectRunOrder(opaqueObjectsNode, 3, ambientOcclusionNode, 1);
         renderGraph.connectRunOrder(opaqueBlocksNode, 3, ambientOcclusionNode, 2);
         renderGraph.connectRunOrder(alphaRejectBlocksNode, 4, ambientOcclusionNode, 3);
         renderGraph.addNode(ambientOcclusionNode);
 
-        NewNode blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", context);
+        NewNode blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", providingModule, context);
         renderGraph.connectBufferPair(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
         renderGraph.connectFbo(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
         renderGraph.addNode(blurredAmbientOcclusionNode);
@@ -150,7 +150,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         // Light shafts
         NewNode simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
 
-        LightShaftsNode lightShaftsNode = new LightShaftsNode("lightShaftsNode", context);
+        LightShaftsNode lightShaftsNode = new LightShaftsNode("lightShaftsNode", providingModule, context);
         renderGraph.connectBufferPair(simpleBlendMaterialsNode, 1, lightShaftsNode, 1);
         renderGraph.addNode(lightShaftsNode);
 
@@ -162,7 +162,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         // Bloom Effect: one high-pass filter and three blur passes
         NewNode simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
 
-        NewNode highPassNode = new HighPassNode("highPassNode", context);
+        NewNode highPassNode = new HighPassNode("highPassNode", providingModule, context);
         renderGraph.connectBufferPair(simpleBlendMaterialsNode, 1, highPassNode, 1);
         renderGraph.addNode(highPassNode);
 
@@ -170,7 +170,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         FBO halfScaleBloomFbo = displayResolutionDependentFbo.request(halfScaleBloomConfig);
 
         // TODO once everything is new system based, update halfscaleblurrednode's input obtaining
-        BloomBlurNode halfScaleBlurredBloomNode = new BloomBlurNode("halfScaleBlurredBloomNode", context, halfScaleBloomFbo);
+        BloomBlurNode halfScaleBlurredBloomNode = new BloomBlurNode("halfScaleBlurredBloomNode", providingModule, context, halfScaleBloomFbo);
         // halfScaleBlurredBloomNode.addInputFboConnection(1, displayResolutionDependentFbo.get(HighPassNode.HIGH_PASS_FBO_URI));
         renderGraph.connectFbo(highPassNode, 1, halfScaleBlurredBloomNode, 1);
         renderGraph.addNode(halfScaleBlurredBloomNode);
@@ -178,14 +178,14 @@ public class AdvancedRenderingModule extends ModuleRendering {
         FboConfig quarterScaleBloomConfig = new FboConfig(BloomBlurNode.QUARTER_SCALE_FBO_URI, QUARTER_SCALE, FBO.Type.DEFAULT);
         FBO quarterScaleBloomFbo = displayResolutionDependentFbo.request(quarterScaleBloomConfig);
 
-        BloomBlurNode quarterScaleBlurredBloomNode = new BloomBlurNode("quarterScaleBlurredBloomNode", context, quarterScaleBloomFbo);
+        BloomBlurNode quarterScaleBlurredBloomNode = new BloomBlurNode("quarterScaleBlurredBloomNode", providingModule, context, quarterScaleBloomFbo);
         renderGraph.connectFbo(halfScaleBlurredBloomNode, 1, quarterScaleBlurredBloomNode, 1);
         renderGraph.addNode(quarterScaleBlurredBloomNode);
 
         FboConfig one8thScaleBloomConfig = new FboConfig(BloomBlurNode.ONE_8TH_SCALE_FBO_URI, ONE_8TH_SCALE, FBO.Type.DEFAULT);
         FBO one8thScaleBloomFbo = displayResolutionDependentFbo.request(one8thScaleBloomConfig);
 
-        BloomBlurNode one8thScaleBlurredBloomNode = new BloomBlurNode("one8thScaleBlurredBloomNode", context, one8thScaleBloomFbo);
+        BloomBlurNode one8thScaleBlurredBloomNode = new BloomBlurNode("one8thScaleBlurredBloomNode", providingModule, context, one8thScaleBloomFbo);
         renderGraph.connectFbo(quarterScaleBlurredBloomNode, 1, one8thScaleBlurredBloomNode, 1);
         renderGraph.addNode(one8thScaleBlurredBloomNode);
 
