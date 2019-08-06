@@ -15,10 +15,9 @@
  */
 package org.terasology.rendering;
 
-import org.terasology.entitySystem.systems.RegisterSystem;
+import org.terasology.context.Context;
 import org.terasology.rendering.cameras.Camera;
 
-import org.terasology.rendering.dag.RenderGraph;
 import org.terasology.rendering.dag.gsoc.ModuleRendering;
 import org.terasology.rendering.dag.gsoc.NewNode;
 import org.terasology.rendering.dag.nodes.*;
@@ -29,10 +28,8 @@ import org.terasology.rendering.opengl.fbms.ImmutableFbo;
 import org.terasology.rendering.opengl.fbms.ShadowMapResolutionDependentFbo;
 
 import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
-import static org.terasology.rendering.dag.nodes.DownSamplerForExposureNode.*;
 import static org.terasology.rendering.opengl.ScalingFactors.*;
 
-@RegisterSystem
 public class AdvancedRenderingModule extends ModuleRendering {
 
     private DisplayResolutionDependentFbo displayResolutionDependentFbo;
@@ -41,10 +38,16 @@ public class AdvancedRenderingModule extends ModuleRendering {
 
     private ShadowMapNode shadowMapNode;
 
-    @Override
+    private static int initializationPriority = 2;
+
+    // Created in renderingModuleRegistry trough reflection and Constructor calling
+    public AdvancedRenderingModule(Context context) {
+        super(context);
+        setInitializationPriority(initializationPriority);
+    }
+
     public void initialise() {
-        super.initialise(this.getClass());
-        context.put(AdvancedRenderingModule.class,this);
+        super.initialise();
 
         initAdvancedRendering();
     }
@@ -67,8 +70,6 @@ public class AdvancedRenderingModule extends ModuleRendering {
         addLightShafts();
 
         addBloomNodes();
-
-        // worldRenderer.requestTaskListRefresh();
     }
 
     private void addHaze() {
