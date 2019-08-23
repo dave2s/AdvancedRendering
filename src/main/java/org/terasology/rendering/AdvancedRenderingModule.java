@@ -85,27 +85,29 @@ public class AdvancedRenderingModule extends ModuleRendering {
         // make this implicit
         // intermediateHazeNode.addInputBufferPairConnection(1, new Pair<FBO,FBO>(displayResolutionDependentFbo.getGBufferPair().getLastUpdatedFbo(),
         //                                                                          displayResolutionDependentFbo.getGBufferPair().getStaleFbo()));
-        renderGraph.connectFbo(backdropNode, 1, intermediateHazeNode, 1);
+        renderGraph.connectBufferPair(backdropNode, 1, intermediateHazeNode, 1);
+        intermediateHazeNode.addInputFboConnection(1, backdropNode.getOutputBufferPairConnection(1).getBufferPair().getPrimaryFbo());
+        intermediateHazeNode.addOutputBufferPairConnection(1, backdropNode.getOutputBufferPairConnection(1).getBufferPair());
         renderGraph.addNode(intermediateHazeNode);
 
         FboConfig finalHazeConfig = new FboConfig(HazeNode.FINAL_HAZE_FBO_URI, ONE_32TH_SCALE, FBO.Type.DEFAULT);
         FBO finalHazeFbo = displayResolutionDependentFbo.request(finalHazeConfig);
 
         HazeNode finalHazeNode = new HazeNode("finalHazeNode", providingModule, context, finalHazeFbo);
-        renderGraph.connectBufferPair(lastUpdatedGBufferClearingNode, 1, finalHazeNode, 1);
+        renderGraph.connectBufferPair(intermediateHazeNode, 1, finalHazeNode, 1);
         renderGraph.connectFbo(intermediateHazeNode, 1, finalHazeNode, 1);
         // Hack because HazeNode extends Blur which is a reusable node and we can't tailor its code to this need
-        finalHazeNode.addOutputBufferPairConnection(1, lastUpdatedGBufferClearingNode.getOutputBufferPairConnection(1));
+        // finalHazeNode.addOutputBufferPairConnection(1, intermediateHazeNode.getOutputBufferPairConnection(1).getBufferPair());
         renderGraph.addNode(finalHazeNode);
 
         NewNode opaqueObjectsNode = renderGraph.findAka("opaqueObjects");
         NewNode opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
         NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
         NewNode overlaysNode = renderGraph.findAka("overlays");
-        renderGraph.reconnectBufferPair(finalHazeNode, 1, opaqueObjectsNode, 1);
-        renderGraph.reconnectBufferPair(finalHazeNode, 1, opaqueBlocksNode, 1);
-        renderGraph.reconnectBufferPair(finalHazeNode, 1, alphaRejectBlocksNode, 1);
-        renderGraph.reconnectBufferPair(finalHazeNode, 1, overlaysNode, 1);
+        renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, opaqueObjectsNode, 1);
+        renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, opaqueBlocksNode, 1);
+        renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, alphaRejectBlocksNode, 1);
+        renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, overlaysNode, 1);
 
         NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
         renderGraph.connectFbo(finalHazeNode, 1, prePostCompositeNode, 3);
