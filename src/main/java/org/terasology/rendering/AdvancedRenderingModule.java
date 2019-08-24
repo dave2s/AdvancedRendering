@@ -18,8 +18,8 @@ package org.terasology.rendering;
 import org.terasology.context.Context;
 import org.terasology.rendering.cameras.Camera;
 
-import org.terasology.rendering.dag.gsoc.ModuleRendering;
-import org.terasology.rendering.dag.gsoc.NewNode;
+import org.terasology.rendering.dag.Node;
+import org.terasology.rendering.dag.ModuleRendering;
 import org.terasology.rendering.dag.nodes.*;
 import org.terasology.rendering.opengl.FBO;
 import org.terasology.rendering.opengl.FboConfig;
@@ -73,8 +73,8 @@ public class AdvancedRenderingModule extends ModuleRendering {
     }
 
     private void addHaze() {
-        NewNode backdropNode = renderGraph.findAka("backdrop");
-        NewNode lastUpdatedGBufferClearingNode = renderGraph.findAka("lastUpdatedGBufferClearing");
+        Node backdropNode = renderGraph.findAka("backdrop");
+        // Node lastUpdatedGBufferClearingNode = renderGraph.findAka("lastUpdatedGBufferClearing");
 
         FboConfig intermediateHazeConfig = new FboConfig(HazeNode.INTERMEDIATE_HAZE_FBO_URI, ONE_16TH_SCALE, FBO.Type.DEFAULT);
         FBO intermediateHazeFbo = displayResolutionDependentFbo.request(intermediateHazeConfig);
@@ -100,16 +100,16 @@ public class AdvancedRenderingModule extends ModuleRendering {
         // finalHazeNode.addOutputBufferPairConnection(1, intermediateHazeNode.getOutputBufferPairConnection(1).getBufferPair());
         renderGraph.addNode(finalHazeNode);
 
-        NewNode opaqueObjectsNode = renderGraph.findAka("opaqueObjects");
-        NewNode opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
-        NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
-        NewNode overlaysNode = renderGraph.findAka("overlays");
+        Node opaqueObjectsNode = renderGraph.findAka("opaqueObjects");
+        Node opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
+        Node alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
+        Node overlaysNode = renderGraph.findAka("overlays");
         renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, opaqueObjectsNode, 1);
         renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, opaqueBlocksNode, 1);
         renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, alphaRejectBlocksNode, 1);
         renderGraph.reconnectInputBufferPairToOutput(finalHazeNode, 1, overlaysNode, 1);
 
-        NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
+        Node prePostCompositeNode = renderGraph.findAka("prePostComposite");
         renderGraph.connectFbo(finalHazeNode, 1, prePostCompositeNode, 3);
     }
 
@@ -123,49 +123,49 @@ public class AdvancedRenderingModule extends ModuleRendering {
         renderGraph.connectFbo(shadowMapClearingNode, 1, shadowMapNode, 1);
         renderGraph.addNode(shadowMapNode);
 
-        NewNode deferredMainLightNode = renderGraph.findNode("BasicRendering:deferredMainLightNode");
+        Node deferredMainLightNode = renderGraph.findNode("BasicRendering:deferredMainLightNode");
         renderGraph.connectFbo(shadowMapNode, 1, deferredMainLightNode, 1);
     }
 
     private void addAmbientOcclusion() {
-        NewNode opaqueObjectsNode = renderGraph.findNode("BasicRendering:opaqueObjectsNode");
-        NewNode opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
-        NewNode alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
-        NewNode applyDeferredLightingNode = renderGraph.findAka("applyDeferredLighting");
+        Node opaqueObjectsNode = renderGraph.findNode("BasicRendering:opaqueObjectsNode");
+        Node opaqueBlocksNode = renderGraph.findAka("opaqueBlocks");
+        Node alphaRejectBlocksNode = renderGraph.findAka("alphaRejectBlocks");
+        Node applyDeferredLightingNode = renderGraph.findAka("applyDeferredLighting");
 
-        NewNode ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", providingModule, context);
+        Node ambientOcclusionNode = new AmbientOcclusionNode("ambientOcclusionNode", providingModule, context);
         renderGraph.connectBufferPair(applyDeferredLightingNode, 1, ambientOcclusionNode, 1);
         renderGraph.connectRunOrder(opaqueObjectsNode, 3, ambientOcclusionNode, 1);
         renderGraph.connectRunOrder(opaqueBlocksNode, 3, ambientOcclusionNode, 2);
         renderGraph.connectRunOrder(alphaRejectBlocksNode, 4, ambientOcclusionNode, 3);
         renderGraph.addNode(ambientOcclusionNode);
 
-        NewNode blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", providingModule, context);
+        Node blurredAmbientOcclusionNode = new BlurredAmbientOcclusionNode("blurredAmbientOcclusionNode", providingModule, context);
         renderGraph.connectBufferPair(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
         renderGraph.connectFbo(ambientOcclusionNode, 1, blurredAmbientOcclusionNode, 1);
         renderGraph.addNode(blurredAmbientOcclusionNode);
 
-        NewNode prePostCompositeNode = renderGraph.findAka("prePostComposite");
+        Node prePostCompositeNode = renderGraph.findAka("prePostComposite");
         renderGraph.connectFbo(blurredAmbientOcclusionNode, 1, prePostCompositeNode, 1);
     }
 
     private void addLightShafts() {
         // Light shafts
-        NewNode simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
+        Node simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
 
         LightShaftsNode lightShaftsNode = new LightShaftsNode("lightShaftsNode", providingModule, context);
         renderGraph.connectBufferPair(simpleBlendMaterialsNode, 1, lightShaftsNode, 1);
         renderGraph.addNode(lightShaftsNode);
 
-        NewNode initialPostProcessing = renderGraph.findNode("BasicRendering:initialPostProcessingNode");
+        Node initialPostProcessing = renderGraph.findNode("BasicRendering:initialPostProcessingNode");
         renderGraph.connectFbo(lightShaftsNode, 1, initialPostProcessing, 1);
     }
 
     private void addBloomNodes() {
         // Bloom Effect: one high-pass filter and three blur passes
-        NewNode simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
+        Node simpleBlendMaterialsNode = renderGraph.findNode("BasicRendering:simpleBlendMaterialsNode");
 
-        NewNode highPassNode = new HighPassNode("highPassNode", providingModule, context);
+        Node highPassNode = new HighPassNode("highPassNode", providingModule, context);
         renderGraph.connectBufferPair(simpleBlendMaterialsNode, 1, highPassNode, 1);
         renderGraph.addNode(highPassNode);
 
@@ -192,7 +192,7 @@ public class AdvancedRenderingModule extends ModuleRendering {
         renderGraph.connectFbo(quarterScaleBlurredBloomNode, 1, one8thScaleBlurredBloomNode, 1);
         renderGraph.addNode(one8thScaleBlurredBloomNode);
 
-        NewNode initialPostProcessing = renderGraph.findNode("BasicRendering:initialPostProcessingNode");
+        Node initialPostProcessing = renderGraph.findNode("BasicRendering:initialPostProcessingNode");
         renderGraph.connectFbo(one8thScaleBlurredBloomNode, 1, initialPostProcessing, 2);
     }
 
