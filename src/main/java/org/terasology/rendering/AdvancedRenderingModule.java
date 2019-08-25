@@ -17,10 +17,16 @@ package org.terasology.rendering;
 
 import org.terasology.context.Context;
 import org.terasology.rendering.cameras.Camera;
-
-import org.terasology.rendering.dag.Node;
 import org.terasology.rendering.dag.ModuleRendering;
-import org.terasology.rendering.dag.nodes.*;
+import org.terasology.rendering.dag.Node;
+import org.terasology.rendering.dag.nodes.AmbientOcclusionNode;
+import org.terasology.rendering.dag.nodes.BloomBlurNode;
+import org.terasology.rendering.dag.nodes.BlurredAmbientOcclusionNode;
+import org.terasology.rendering.dag.nodes.BufferClearingNode;
+import org.terasology.rendering.dag.nodes.HazeNode;
+import org.terasology.rendering.dag.nodes.HighPassNode;
+import org.terasology.rendering.dag.nodes.LightShaftsNode;
+import org.terasology.rendering.dag.nodes.ShadowMapNode;
 import org.terasology.rendering.opengl.FBO;
 import org.terasology.rendering.opengl.FboConfig;
 import org.terasology.rendering.opengl.fbms.DisplayResolutionDependentFbo;
@@ -31,14 +37,13 @@ import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
 import static org.terasology.rendering.opengl.ScalingFactors.*;
 
 public class AdvancedRenderingModule extends ModuleRendering {
+    private static int initializationPriority = 2;
 
     private DisplayResolutionDependentFbo displayResolutionDependentFbo;
     private ShadowMapResolutionDependentFbo shadowMapResolutionDependentFbo;
     private ImmutableFbo immutableFbo;
 
     private ShadowMapNode shadowMapNode;
-
-    private static int initializationPriority = 2;
 
     // Created in renderingModuleRegistry trough reflection and Constructor calling
     public AdvancedRenderingModule(Context context) {
